@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "target": "esnext",
+    "baseUrl": ".",
+    "strict": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "lib": ["esnext"],
+    "paths": {
+      "ai": ["./glia-ai-sdk.ts"]
+    }
+  },
+  "exclude": ["node_modules"],
+  "include": ["tsup.config.ts", "worker-wrapper.ts", "src/**/*.ts", "tests/**/*.ts"]
+}

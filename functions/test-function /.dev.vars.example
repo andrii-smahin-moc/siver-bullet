@@ -1,0 +1,38 @@
+DD_API_KEY=
+FDMS_VERSION=
+SITE_ID=
+
+GLIA_API_DOMAIN=
+GLIA_GVA_API_KEY=
+GLIA_GVA_API_KEY_SECRET=
+GLIA_KV_STORAGE_REPOSITORY=
+GLIA_LIVE_OPERATOR_QUEUE_ID=
+GLIA_OPERATOR_API_KEY=
+GLIA_OPERATOR_API_SECRET=
+
+GLIA_AI_MODEL="glia.micro.v1"
+GLIA_AI_MAX_TOKENS="512"
+GLIA_AI_STOP_SEQUENCES=""
+GLIA_AI_TEMPERATURE="0.1"
+PROMPT_OPTION_DETECTOR="User message: "{userText}". Options: {possibleOptions}. Determine the best match and respond only with JSON in the required format."
+PROMPT_DETECT_SYSTEM_MESSAGE="You are a classification assistant. Your task is to select which option best matches the user's reply. Always return strictly valid JSON: {"optionName": string|null, "confidence": number 0-1}. Choose null if uncertain."
+PROMPT_DETECT_CONFIDENCE="0.9"
+
+# Set OTP-related goals only
+GVA_GOAL_CONNECT_TO_HUMAN_AGENT=1196652
+GVA_GOAL_ENTER_OTP_CODE=1196652
+GVA_GOAL_INVALID_OTP=1196652
+GVA_GOAL_INVALID_OTP_IDENTIFIER=1196652
+GVA_GOAL_OTP_FLOW_START=1196652
+GVA_GOAL_PAYMENT_SUCCESS=1196652
+GVA_GOAL_TRANSFER_LIMIT_EXCEEDED=1196652
+
+GVA_MESSAGE_TRANSFER_TO_AGENT="I am unable to complete your request at this time. I will transfer you to a representative who can assist you further."
+
+CALL_RETRIES=3
+REQUEST_TIMEOUT=30000
+RETRY_DELAY=1000
+FAIL_ATTEMPTS=3
+INPUT_VALIDATION_FAILED_ATTEMPTS_LIMIT=3
+
+IS_DEV_MOD=true

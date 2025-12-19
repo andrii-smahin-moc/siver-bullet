@@ -1,0 +1,40 @@
+{
+  "name": "test-function",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsup && mv ./dist/function.js ./$npm_package_name.js",
+    "dev": "wrangler dev --port=3000 --inspector-port=9229",
+    "test": "vitest run",
+    "coverage": "vitest --config vitest.coverage.config.ts run --coverage && node generate-coverage-badge.js",
+    "lint": "eslint --cache ./src && prettier --check '**/*.ts'",
+    "lint:format": "prettier --write --log-level=warn '**/*.ts' && eslint --cache --fix ./src",
+    "generate-types": "wrangler types",
+    "typecheck": "npx tsc --noEmit",
+    "postinstall": "cd ../.. && npm install --no-audit --no-fund || true"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.8.56",
+    "@types/node": "^22.8.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "axios": "^1.11.0",
+    "globals": "^16.4.0",
+    "prettier": "^3.5.3",
+    "tsup": "^8.4.0",
+    "type-fest": "^5.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4",
+    "wrangler": "^3.114.13"
+  },
+  "overrides": {
+    "eslint-config-airbnb-base": {
+      "eslint": "^9"
+    }
+  },
+  "dependencies": {
+    "un": "^0.0.0",
+    "valibot": "^1.1.0"
+  }
+}
