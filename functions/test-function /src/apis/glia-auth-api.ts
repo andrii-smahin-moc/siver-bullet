@@ -1,10 +1,6 @@
-import type { FunctionConfig, GliaConfig, HttpResponse, LoggerInterface } from '../types';
+import type { FunctionConfig, GliaConfig, HttpResponse, LoggerInterface, UnknownResponse } from '../types';
 
 import { HttpRequest } from './http-request';
-
-interface TokenResponse {
-  token: string;
-}
 
 export class GliaAuthApi {
   private gliaConfig: GliaConfig;
@@ -16,14 +12,14 @@ export class GliaAuthApi {
     this.httpRequest = new HttpRequest(config, logger);
   }
 
-  async fetchBearerToken(apiKey: string, apiKeySecret: string): Promise<HttpResponse<TokenResponse>> {
+  async fetchBearerToken(): Promise<HttpResponse<UnknownResponse>> {
     const headers = new Headers();
     headers.append('Content-Type', 'application/json');
     headers.append('Accept', 'application/vnd.salemove.v1+json');
 
     const body = JSON.stringify({
-      api_key_id: apiKey,
-      api_key_secret: apiKeySecret,
+      api_key_id: this.gliaConfig.operatorApiKey,
+      api_key_secret: this.gliaConfig.operatorApiKeySecret,
     });
 
     const requestOptions = {
@@ -33,6 +29,27 @@ export class GliaAuthApi {
     };
 
     const url = `${this.gliaConfig.apiDomain}/operator_authentication/tokens`;
-    return this.httpRequest.fetchWithRetry<TokenResponse>(url, requestOptions, 'fetchBearerToken');
+    return this.httpRequest.fetchWithRetry<UnknownResponse>(url, requestOptions, 'fetchBearerToken');
+  }
+
+  async fetchSiteBearerToken(): Promise<HttpResponse<UnknownResponse>> {
+    const headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+    headers.append('Accept', 'application/vnd.salemove.v1+json');
+
+    const body = JSON.stringify({
+      api_key_id: this.gliaConfig.siteApiKey,
+      api_key_secret: this.gliaConfig.siteApiKeySecret,
+      site_ids: [this.gliaConfig.siteId],
+    });
+
+    const requestOptions = {
+      body,
+      headers,
+      method: 'POST',
+    };
+
+    const url = `${this.gliaConfig.apiDomain}/sites/tokens`;
+    return this.httpRequest.fetchWithRetry<UnknownResponse>(url, requestOptions, 'fetchSiteBearerToken');
   }
 }

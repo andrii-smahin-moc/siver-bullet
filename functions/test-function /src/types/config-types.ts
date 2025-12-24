@@ -14,7 +14,10 @@ export interface GliaConfig {
   apiDomain: string;
   operatorApiKey: string;
   operatorApiKeySecret: string;
-  engineId: string;
+  siteApiKey: string;
+  siteApiKeySecret: string;
+  siteId: string;
+  webhookUrl: string;
 }
 
 export interface FunctionConfig {
