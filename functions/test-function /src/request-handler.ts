@@ -1,5 +1,5 @@
 import { TestingService } from './services';
-import { BaseRequestPayload, FunctionConfig, LoggerInterface, ServiceResponse } from './types';
+import { FunctionConfig, LoggerInterface, RequestPayload, ServiceResponse } from './types';
 
 export class RequestHandler {
   private testingService: TestingService;
@@ -11,16 +11,30 @@ export class RequestHandler {
     this.testingService = new TestingService(config, logger);
   }
 
-  async handleRequest(requestPayload: BaseRequestPayload): Promise<ServiceResponse<unknown>> {
+  async handleRequest(requestPayload: RequestPayload): Promise<ServiceResponse<unknown>> {
     await this.logger.info('Handling request with payload:');
 
-    switch (requestPayload.requestType) {
-      case 'getResults': {
-        return this.testingService.getResults(requestPayload.payload);
-      }
+    if ('requestType' in requestPayload) {
+      switch (requestPayload.requestType) {
+        case 'getResults': {
+          return this.testingService.getResults(requestPayload.payload);
+        }
 
-      case 'initTest': {
-        return this.testingService.initializeTest(requestPayload.payload);
+        case 'initTest': {
+          return this.testingService.initializeTest(requestPayload.payload);
+        }
+      }
+    }
+
+    if ('event_type' in requestPayload) {
+      switch (requestPayload.event_type) {
+        case 'engagement.chat.message': {
+          return this.testingService.handleChatMessage(requestPayload);
+        }
+
+        case 'engagement.start': {
+          return this.testingService.handleEngagementStart(requestPayload);
+        }
       }
     }
 
