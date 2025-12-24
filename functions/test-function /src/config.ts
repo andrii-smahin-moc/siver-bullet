@@ -30,9 +30,12 @@ export function validateConfig(environment: Record<string, unknown>): Validation
 
       glia: {
         apiDomain: validatedEnvironment.GLIA_API_DOMAIN,
-        engineId: validatedEnvironment.GLIA_SURVEY_AI_ENGINE_ID,
         operatorApiKey: validatedEnvironment.GLIA_USER_API_KEY,
         operatorApiKeySecret: validatedEnvironment.GLIA_USER_API_KEY_SECRET,
+        siteApiKey: validatedEnvironment.GLIA_SITE_API_KEY,
+        siteApiKeySecret: validatedEnvironment.GLIA_SITE_API_KEY_SECRET,
+        siteId: validatedEnvironment.SITE_ID,
+        webhookUrl: validatedEnvironment.GLIA_WEBHOOK_URL,
       },
 
       requestTimeout: Number(validatedEnvironment.REQUEST_TIMEOUT) || 5000,

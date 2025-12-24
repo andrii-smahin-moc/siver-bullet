@@ -15,10 +15,14 @@ export const BaseEnvironmentSchema = v.object({
 
   // Glia platform configuration
   GLIA_API_DOMAIN: v.string(),
-  GLIA_SURVEY_AI_ENGINE_ID: v.string(),
+
+  GLIA_SITE_API_KEY: v.string(),
+  GLIA_SITE_API_KEY_SECRET: v.string(),
 
   GLIA_USER_API_KEY: v.string(),
   GLIA_USER_API_KEY_SECRET: v.string(),
+
+  GLIA_WEBHOOK_URL: v.string(),
 
   IS_DEV_MOD: v.optional(v.string()),
 

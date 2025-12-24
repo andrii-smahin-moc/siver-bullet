@@ -1,8 +1,7 @@
 import * as v from 'valibot';
 
 export const InitializeTestRequestSchema = v.object({
-  age: v.number(),
-  name: v.string(),
+  testingQueueId: v.string(),
 });
 
 export const GetResultsRequestSchema = v.object({

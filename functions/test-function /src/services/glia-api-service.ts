@@ -1,4 +1,4 @@
-import { GliaAuthApi, GliaVisitorApi } from '../apis';
+import { GliaAuthApi, GliaQueueApi, GliaVisitorApi } from '../apis';
 import { GliaNewVisitorResponseSchema, GliaOperatorTokenResponseSchema, GliaSiteTokenResponseSchema } from '../schemas';
 import type { FunctionConfig, GliaNewVisitorResponse, LoggerInterface } from '../types';
 import { validateSchema } from '../validator';
@@ -6,6 +6,7 @@ import { validateSchema } from '../validator';
 export class GliaAPIService {
   private gliaAuthApi: GliaAuthApi;
   private gliaVisitorApi: GliaVisitorApi;
+  private gliaQueueApi: GliaQueueApi;
 
   constructor(
     private config: FunctionConfig,
@@ -13,6 +14,7 @@ export class GliaAPIService {
   ) {
     this.gliaAuthApi = new GliaAuthApi(config, logger);
     this.gliaVisitorApi = new GliaVisitorApi(config, logger);
+    this.gliaQueueApi = new GliaQueueApi(config, logger);
   }
 
   async fetchOperatorToken(): Promise<string | null> {
@@ -63,6 +65,17 @@ export class GliaAPIService {
       const message = error instanceof Error ? error.message : 'Unknown error in createVisitor';
       await this.logger.error(`Error creating visitor: ${message}`);
       return null;
+    }
+  }
+
+  async createQueueTicket(visitorToken: string, siteToken: string, destinationQueueId: string): Promise<boolean> {
+    try {
+      const response = await this.gliaQueueApi.createQueueTicket(visitorToken, siteToken, destinationQueueId);
+      return response.ok;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error in createQueueTicket';
+      await this.logger.error(`Error creating queue ticket: ${message}`);
+      return false;
     }
   }
 }

@@ -33,8 +33,21 @@ export class TestingService {
       };
     }
 
+    const isTicketCreated = await this.gliaApiService.createQueueTicket(testVisitor.access_token, siteToken, payload.testingQueueId);
+    if (!isTicketCreated) {
+      await this.logger.error('Failed to create queue ticket during test initialization.');
+      return {
+        error: 'Failed to create queue ticket',
+        status: false,
+      };
+    }
+
+    await this.logger.info('Test initialized successfully.');
     return {
-      payload: {},
+      payload: {
+        testVisitorId: testVisitor.id,
+        visitorToken: testVisitor.access_token,
+      },
       status: true,
     };
   }
