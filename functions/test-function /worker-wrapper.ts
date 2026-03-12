@@ -1,12 +1,8 @@
-/**
- * This file is used to wrap the onInvoke function
- * and provide the kvStoreFactory to the onInvoke function
- * during the local development process.
- */
 import { onInvoke } from './src/function';
+import { kvStoreFactory } from './glia-kv-sdk';
 
 export default {
   async fetch(request: Request, environment: Record<string, unknown>): Promise<Response> {
-    return onInvoke(request, environment);
+    return onInvoke(request, environment, kvStoreFactory);
   },
 };

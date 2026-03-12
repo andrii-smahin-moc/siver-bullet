@@ -1,5 +1,5 @@
 import { TestingService } from './services';
-import { FunctionConfig, LoggerInterface, RequestPayload, ServiceResponse } from './types';
+import { FunctionConfig, KvStoreFactory, LoggerInterface, RequestPayload, ServiceResponse } from './types';
 
 export class RequestHandler {
   private testingService: TestingService;
@@ -7,8 +7,9 @@ export class RequestHandler {
   constructor(
     config: FunctionConfig,
     private logger: LoggerInterface,
+    kvStoreFactory: KvStoreFactory,
   ) {
-    this.testingService = new TestingService(config, logger);
+    this.testingService = new TestingService(config, logger, kvStoreFactory);
   }
 
   async handleRequest(requestPayload: RequestPayload): Promise<ServiceResponse<unknown>> {

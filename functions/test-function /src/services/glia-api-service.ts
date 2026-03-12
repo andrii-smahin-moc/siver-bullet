@@ -1,4 +1,4 @@
-import { GliaAuthApi, GliaQueueApi, GliaVisitorApi } from '../apis';
+import { GliaAuthApi, GliaEngagementApi, GliaQueueApi, GliaVisitorApi } from '../apis';
 import { GliaNewVisitorResponseSchema, GliaOperatorTokenResponseSchema, GliaSiteTokenResponseSchema } from '../schemas';
 import type { FunctionConfig, GliaNewVisitorResponse, LoggerInterface } from '../types';
 import { validateSchema } from '../validator';
@@ -7,6 +7,7 @@ export class GliaAPIService {
   private gliaAuthApi: GliaAuthApi;
   private gliaVisitorApi: GliaVisitorApi;
   private gliaQueueApi: GliaQueueApi;
+  private gliaEngagementApi: GliaEngagementApi;
 
   constructor(
     private config: FunctionConfig,
@@ -15,6 +16,7 @@ export class GliaAPIService {
     this.gliaAuthApi = new GliaAuthApi(config, logger);
     this.gliaVisitorApi = new GliaVisitorApi(config, logger);
     this.gliaQueueApi = new GliaQueueApi(config, logger);
+    this.gliaEngagementApi = new GliaEngagementApi(config, logger);
   }
 
   async fetchOperatorToken(): Promise<string | null> {
@@ -54,7 +56,7 @@ export class GliaAPIService {
   async createVisitor(siteToken: string): Promise<GliaNewVisitorResponse | null> {
     try {
       const response = await this.gliaVisitorApi.createVisitor(siteToken);
-      if (response.ok && response.payload) {
+      if (response.ok) {
         const validatedResult = validateSchema(GliaNewVisitorResponseSchema, response.payload, 'GliaNewVisitorResponseSchema');
         if (validatedResult.status) {
           return validatedResult.output;
@@ -75,6 +77,17 @@ export class GliaAPIService {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error in createQueueTicket';
       await this.logger.error(`Error creating queue ticket: ${message}`);
+      return false;
+    }
+  }
+
+  async sendMessage(visitorToken: string, engagementId: string, message: string): Promise<boolean> {
+    try {
+      const response = await this.gliaEngagementApi.sendMessage(visitorToken, engagementId, message);
+      return response.ok;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error in sendMessage';
+      await this.logger.error(`Error sending message: ${message}`);
       return false;
     }
   }

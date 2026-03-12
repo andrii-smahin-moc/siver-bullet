@@ -18,7 +18,7 @@ export class GliaQueueApi {
     headers.append('Content-Type', 'application/json');
 
     const body = JSON.stringify({
-      media: 'text',
+      media: 'phone',
       queue_ids: [destinationQueueId],
       site_id: this.gliaConfig.siteId,
       source: 'visitor_integrator',

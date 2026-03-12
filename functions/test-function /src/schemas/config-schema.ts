@@ -19,7 +19,9 @@ export const BaseEnvironmentSchema = v.object({
   GLIA_SITE_API_KEY: v.string(),
   GLIA_SITE_API_KEY_SECRET: v.string(),
 
+  GLIA_TEST_VISITOR_PHONE_NUMBER: v.string(),
   GLIA_USER_API_KEY: v.string(),
+
   GLIA_USER_API_KEY_SECRET: v.string(),
 
   GLIA_WEBHOOK_URL: v.string(),
@@ -27,6 +29,7 @@ export const BaseEnvironmentSchema = v.object({
   IS_DEV_MOD: v.optional(v.string()),
 
   REQUEST_TIMEOUT: v.optional(v.string()),
+
   RETRY_DELAY: v.optional(v.string()),
 
   SITE_ID: v.string(),

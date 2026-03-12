@@ -4,20 +4,25 @@ import {
   GliaChatMessagePayload,
   GliaEngagementStartPayload,
   InitializeRequestPayload,
+  KvStoreFactory,
   LoggerInterface,
   ServiceResponse,
 } from '../types';
 
 import { GliaAPIService } from './glia-api-service';
+import { GliaKVService } from './glia-kv-service';
 
 export class TestingService {
   private gliaApiService: GliaAPIService;
+  private gliaKVService: GliaKVService;
 
   constructor(
     private config: FunctionConfig,
     private logger: LoggerInterface,
+    kvStoreFactory: KvStoreFactory,
   ) {
     this.gliaApiService = new GliaAPIService(config, logger);
+    this.gliaKVService = new GliaKVService(config, logger, kvStoreFactory);
   }
 
   async initializeTest(payload: InitializeRequestPayload): Promise<ServiceResponse<unknown>> {
@@ -40,6 +45,8 @@ export class TestingService {
         status: false,
       };
     }
+
+    await this.gliaKVService.setValue(testVisitor.id, testVisitor.access_token);
 
     const isTicketCreated = await this.gliaApiService.createQueueTicket(testVisitor.access_token, siteToken, payload.testingQueueId);
     if (!isTicketCreated) {
@@ -80,6 +87,20 @@ export class TestingService {
 
   async handleEngagementStart(payload: GliaEngagementStartPayload): Promise<ServiceResponse<unknown>> {
     await this.logger.info('Handling engagement start event...');
+
+    const visitorToken = await this.gliaKVService.getValue(payload.engagement.visitor_id);
+
+    if (visitorToken) {
+      await this.logger.info(`Found visitor token for visitor ID ${payload.engagement.visitor_id}. Sending automated message...`);
+
+      const message = `Hello! This is an automated message sent at the start of the engagement with ID: ${payload.engagement.id}`;
+
+      const didSendMessage = await this.gliaApiService.sendMessage(visitorToken.value, payload.engagement.id, message);
+      return {
+        payload: { didSendMessage },
+        status: true,
+      };
+    }
 
     return {
       payload: {},
