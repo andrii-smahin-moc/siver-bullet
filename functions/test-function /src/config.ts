@@ -38,6 +38,25 @@ export function validateConfig(environment: Record<string, unknown>): Validation
         webhookUrl: validatedEnvironment.GLIA_WEBHOOK_URL,
       },
 
+      gliaAI: {
+        confidence: Number(validatedEnvironment.CONFIDENCE),
+        maxTokens: Number(validatedEnvironment.GLIA_AI_MAX_TOKENS),
+        model: validatedEnvironment.GLIA_AI_MODEL,
+        prompt: validatedEnvironment.PROMPT,
+        stopSequences: (() => {
+          const raw = validatedEnvironment.GLIA_AI_STOP_SEQUENCES;
+          if (!raw) {
+            return [];
+          }
+          return raw
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+        })(),
+        systemMessage: validatedEnvironment.SYSTEM_MESSAGE,
+        temperature: Number(validatedEnvironment.GLIA_AI_TEMPERATURE),
+      },
+
       requestTimeout: Number(validatedEnvironment.REQUEST_TIMEOUT) || 5000,
       retryDelay: Number(validatedEnvironment.RETRY_DELAY) || 3000,
     },

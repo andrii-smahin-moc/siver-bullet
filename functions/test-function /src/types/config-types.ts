@@ -20,9 +20,20 @@ export interface GliaConfig {
   webhookUrl: string;
 }
 
+export interface GliaAIConfig {
+  prompt: string;
+  systemMessage: string;
+  confidence: number;
+  temperature: number;
+  maxTokens: number;
+  model: string;
+  stopSequences: string[];
+}
+
 export interface FunctionConfig {
   callRetries: number;
   dataDog: DataDogConfig;
+  gliaAI: GliaAIConfig;
   glia: GliaConfig;
   requestTimeout: number;
   retryDelay: number;
