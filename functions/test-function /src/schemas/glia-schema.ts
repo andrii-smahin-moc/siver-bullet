@@ -12,3 +12,7 @@ export const GliaNewVisitorResponseSchema = vi.object({
   access_token: vi.string(),
   id: vi.string(),
 });
+
+export const GliaEngagementRequestSchema = vi.object({
+  id: vi.string(),
+});

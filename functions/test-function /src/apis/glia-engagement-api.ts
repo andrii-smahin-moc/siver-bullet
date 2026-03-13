@@ -54,6 +54,32 @@ export class GliaEngagementApi {
     );
   }
 
+  async createEngagementRequest(visitorToken: string, visitorPhoneNumber: string): Promise<HttpResponse<UnknownResponse>> {
+    const headers = new Headers();
+    headers.append('Authorization', `Bearer ${visitorToken}`);
+    headers.append('Accept', 'application/vnd.salemove.v1+json');
+    headers.append('Content-Type', 'application/json');
+
+    const requestOptions = {
+      body: JSON.stringify({
+        media: 'phone',
+        media_options: {
+          one_way: true,
+          phone_number: visitorPhoneNumber,
+        },
+        operator_id: '',
+        site_id: this.config.glia.siteId,
+        source: 'visitor_integrator',
+      }),
+      headers,
+      method: 'POST',
+    };
+
+    const url = `${this.config.glia.apiDomain}/engagement_requests`;
+
+    return this.httpRequest.fetchWithRetry<UnknownResponse>(url, requestOptions, 'createEngagementRequest');
+  }
+
   private generateUuid() {
     return crypto.randomUUID();
   }

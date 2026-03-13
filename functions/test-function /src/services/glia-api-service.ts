@@ -1,6 +1,11 @@
 import { GliaAuthApi, GliaEngagementApi, GliaQueueApi, GliaVisitorApi } from '../apis';
-import { GliaNewVisitorResponseSchema, GliaOperatorTokenResponseSchema, GliaSiteTokenResponseSchema } from '../schemas';
-import type { FunctionConfig, GliaNewVisitorResponse, LoggerInterface } from '../types';
+import {
+  GliaEngagementRequestSchema,
+  GliaNewVisitorResponseSchema,
+  GliaOperatorTokenResponseSchema,
+  GliaSiteTokenResponseSchema,
+} from '../schemas';
+import type { FunctionConfig, GliaEngagementRequestResult, GliaNewVisitorResponse, LoggerInterface } from '../types';
 import { validateSchema } from '../validator';
 
 export class GliaAPIService {
@@ -89,6 +94,21 @@ export class GliaAPIService {
       const message = error instanceof Error ? error.message : 'Unknown error in sendMessage';
       await this.logger.error(`Error sending message: ${message}`);
       return false;
+    }
+  }
+
+  async createEngagementRequest(visitorToken: string, visitorPhoneNumber: string): Promise<GliaEngagementRequestResult | null> {
+    try {
+      const raw = await this.gliaEngagementApi.createEngagementRequest(visitorToken, visitorPhoneNumber);
+      const result = validateSchema(GliaEngagementRequestSchema, raw, 'createEngagementRequest');
+      if (!result.status) {
+        await this.logger.error(`createEngagementRequest: Invalid payload: ${result.message}`);
+      }
+      return result.status ? result.output : null;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error in transferVisitor';
+      await this.logger.error(`transferVisitor failed: ${message}`);
+      return null;
     }
   }
 }
