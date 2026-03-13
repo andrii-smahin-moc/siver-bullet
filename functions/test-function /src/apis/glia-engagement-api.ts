@@ -33,7 +33,12 @@ export class GliaEngagementApi {
     headers.append('Authorization', `Bearer ${token}`);
 
     const body = {
-      content: message,
+      attachment: {
+        content: `<speak>${message}</speak>`,
+        type: 'ssml',
+      },
+      content: '',
+      type: 'chat',
     };
 
     const requestOptions = {

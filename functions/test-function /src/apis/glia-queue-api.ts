@@ -19,12 +19,22 @@ export class GliaQueueApi {
 
     const body = JSON.stringify({
       media: 'phone',
+      media_options: {
+        one_way: true,
+        phone_number: '+16593339160',
+      },
       queue_ids: [destinationQueueId],
       site_id: this.gliaConfig.siteId,
       source: 'visitor_integrator',
       webhooks: [
         {
-          events: ['engagement.start', 'engagement.end', 'engagement.request.failure', 'engagement.chat.message'],
+          events: [
+            'engagement.start',
+            'engagement.end',
+            'engagement.request.failure',
+            'engagement.chat.message',
+            'engagement.media_upgrade_request',
+          ],
           headers: {
             Authorization: `Bearer ${siteToken}`,
           },
