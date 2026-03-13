@@ -1,17 +1,59 @@
-import {
-  FunctionConfig,
+import type { FunctionConfig } from '../types/config-types';
+import type { KvStoreFactory } from '../types/kv-storage-types';
+import type { LoggerInterface } from '../types/logger-types';
+import type {
   GetResultRequestPayload,
   GliaChatMessagePayload,
   GliaEngagementStartPayload,
   InitializeRequestPayload,
-  KvStoreFactory,
-  LoggerInterface,
-  ServiceResponse,
-} from '../types';
+} from '../types/request-payload-types';
+import type { ServiceResponse } from '../types/response-payload-types';
 
 import { GliaAIService } from './glia-ai-service';
 import { GliaAPIService } from './glia-api-service';
 import { GliaKVService } from './glia-kv-service';
+
+type IncomingUtterancePayload = {
+  account_id: string;
+  engagement_id: string;
+  engine_settings: Record<string, unknown>;
+  message_created_at: string;
+  message_id: string;
+  message_metadata: Record<string, unknown>;
+  operator_id: string;
+  site_id: string;
+  utterance: string;
+  visitor_attributes: Record<string, unknown>;
+  visitor_id: string;
+};
+
+type SuggestionMessage = {
+  attachment: {
+    content: string;
+    type: 'ssml';
+  };
+  content: string;
+  type: 'suggestion';
+};
+
+type TransferMessage = {
+  properties: {
+    media: 'text';
+    notifications: {
+      failure: string;
+      queue_closed: string;
+      success: string;
+    };
+    queue_id: string;
+    version: '0';
+  };
+  type: 'transfer';
+};
+
+type UtteranceResponse = {
+  confidence_level: number;
+  messages: Array<SuggestionMessage | TransferMessage>;
+};
 
 export class TestingService {
   private gliaApiService: GliaAPIService;
@@ -28,7 +70,9 @@ export class TestingService {
     this.gliaAiService = new GliaAIService(config);
   }
 
-  async initializeTest(payload: InitializeRequestPayload): Promise<ServiceResponse<unknown>> {
+  async initializeTest(_payload: InitializeRequestPayload): Promise<ServiceResponse<unknown>> {
+    void _payload;
+
     await this.logger.info('Initializing test...');
 
     const siteToken = await this.gliaApiService.fetchSiteToken();
@@ -51,7 +95,7 @@ export class TestingService {
 
     await this.gliaKVService.setValue(testVisitor.id, testVisitor.access_token);
 
-    const isTicketCreated = await this.gliaApiService.createQueueTicket(testVisitor.access_token, siteToken, payload.testingQueueId);
+    const isTicketCreated = await this.gliaApiService.createQueueTicket(testVisitor.access_token, siteToken);
     if (!isTicketCreated) {
       await this.logger.error('Failed to create queue ticket during test initialization.');
       return {
@@ -80,59 +124,36 @@ export class TestingService {
   }
 
   async handleChatMessage(payload: GliaChatMessagePayload): Promise<ServiceResponse<unknown>> {
-    const chatMessageLogContext = [
-      `engagementId=${payload.message.engagement_id}`,
-      `target=${payload.message.target}`,
-      `type=${payload.message.type}`,
-      `timestamp=${payload.message.timestamp}`,
-    ].join(' ');
+    return this.handleIncomingMessage({
+      content: payload.message.content,
+      engagementId: payload.message.engagement_id,
+      source: 'handleChatMessage',
+      target: payload.message.target,
+      timestamp: payload.message.timestamp,
+      type: payload.message.type,
+    });
+  }
 
-    await this.logger.info(`[handleChatMessage] Received message. ${chatMessageLogContext}`);
+  async handleUtterance(payload: IncomingUtterancePayload): Promise<ServiceResponse<UtteranceResponse>> {
+    try {
+      await this.logger.info(`[handleUtterance] Generating AI response. engagementId=${payload.engagement_id}`);
 
-    if (payload.message.target === 'operator') {
-      await this.logger.info(`Ignoring chat message event targeted to operator. engagementId=${payload.message.engagement_id}`);
+      const prompt = this.config.gliaAI.prompt.replace('{sutMessage}', payload.utterance);
+      const generatedResponse = await this.gliaAiService.invokeModel(this.config.gliaAI.systemMessage, prompt);
 
       return {
-        payload: {
-          ignored: true,
-        },
+        payload: this.buildResponse([this.createSuggestionMessage(generatedResponse)]),
+        status: true,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      await this.logger.error(`[handleUtterance] Failed to build utterance response. error=${errorMessage}`);
+
+      return {
+        payload: this.buildResponse([]),
         status: true,
       };
     }
-
-    const engagementState = await this.gliaKVService.getValue(payload.message.engagement_id);
-    const engagementData = this.parseEngagementState(engagementState.value);
-
-    if (!engagementData) {
-      await this.logger.warn(`[handleChatMessage] Missing or invalid engagement state. engagementId=${payload.message.engagement_id}`);
-
-      return {
-        payload: {},
-        status: true,
-      };
-    }
-
-    await this.logger.info(
-      `[handleChatMessage] Generating AI reply. engagementId=${payload.message.engagement_id} visitorId=${engagementData.visitorId}`,
-    );
-    const prompt = this.config.gliaAI.prompt.replace('{sutMessage}', payload.message.content);
-    const generatedResponse = await this.gliaAiService.invokeModel(this.config.gliaAI.systemMessage, prompt);
-    const didSendMessage = await this.gliaApiService.sendMessage(
-      engagementData.visitorToken,
-      payload.message.engagement_id,
-      generatedResponse,
-    );
-
-    await this.logger.info(
-      `[handleChatMessage] Reply processed. engagementId=${payload.message.engagement_id} didSendMessage=${String(didSendMessage)}`,
-    );
-
-    return {
-      payload: {
-        didSendMessage,
-      },
-      status: true,
-    };
   }
 
   async handleEngagementStart(payload: GliaEngagementStartPayload): Promise<ServiceResponse<unknown>> {
@@ -192,6 +213,87 @@ export class TestingService {
     } catch {
       return null;
     }
+  }
+
+  private async handleIncomingMessage(parameters: {
+    content: string;
+    engagementId: string;
+    source: 'handleChatMessage' | 'handleUtterance';
+    target?: string;
+    timestamp: string;
+    type: string;
+  }): Promise<ServiceResponse<unknown>> {
+    const logContext = [
+      `engagementId=${parameters.engagementId}`,
+      `target=${parameters.target ?? 'n/a'}`,
+      `type=${parameters.type}`,
+      `timestamp=${parameters.timestamp}`,
+    ].join(' ');
+
+    await this.logger.info(`[${parameters.source}] Received message. ${logContext}`);
+
+    if (parameters.target === 'operator') {
+      await this.logger.info(`Ignoring chat message event targeted to operator. engagementId=${parameters.engagementId}`);
+
+      return {
+        payload: {
+          ignored: true,
+        },
+        status: true,
+      };
+    }
+
+    const engagementState = await this.gliaKVService.getValue(parameters.engagementId);
+    const engagementData = this.parseEngagementState(engagementState.value);
+
+    if (!engagementData) {
+      await this.logger.warn(`[${parameters.source}] Missing or invalid engagement state. engagementId=${parameters.engagementId}`);
+
+      return {
+        payload: {},
+        status: true,
+      };
+    }
+
+    await this.logger.info(
+      `[${parameters.source}] Generating AI reply. engagementId=${parameters.engagementId} visitorId=${engagementData.visitorId}`,
+    );
+    const prompt = this.config.gliaAI.prompt.replace('{sutMessage}', parameters.content);
+    const generatedResponse = await this.gliaAiService.invokeModel(this.config.gliaAI.systemMessage, prompt);
+    const didSendMessage = await this.gliaApiService.sendMessage(engagementData.visitorToken, parameters.engagementId, generatedResponse);
+
+    await this.logger.info(
+      `[${parameters.source}] Reply processed. engagementId=${parameters.engagementId} didSendMessage=${String(didSendMessage)}`,
+    );
+
+    return {
+      payload: {
+        didSendMessage,
+      },
+      status: true,
+    };
+  }
+
+  private createSuggestionMessage(content: string): SuggestionMessage {
+    return {
+      attachment: {
+        content: this.toSsml(content),
+        type: 'ssml',
+      },
+      content: '',
+      type: 'suggestion',
+    };
+  }
+
+  private buildResponse(messages: Array<SuggestionMessage | TransferMessage>): UtteranceResponse {
+    return {
+      confidence_level: 0.99,
+      messages,
+    };
+  }
+
+  private toSsml(content: string): string {
+    return `<speak>${content}</speak>`;
   }
 
   private async generateInitialMessage(engagementId: string): Promise<string> {

@@ -39,6 +39,20 @@ export const GliaChatMessagePayloadSchema = v.object({
   event_type: v.literal('engagement.chat.message'),
 });
 
+export const GliaUtterancePayloadSchema = v.object({
+  account_id: v.string(),
+  engagement_id: v.string(),
+  engine_settings: v.record(v.string(), v.unknown()),
+  message_created_at: v.string(),
+  message_id: v.string(),
+  message_metadata: v.record(v.string(), v.unknown()),
+  operator_id: v.string(),
+  site_id: v.string(),
+  utterance: v.string(),
+  visitor_attributes: v.record(v.string(), v.unknown()),
+  visitor_id: v.string(),
+});
+
 export const GliaWebhookPayloadSchema = v.variant('event_type', [GliaEngagementStartPayloadSchema, GliaChatMessagePayloadSchema]);
 
-export const UnionRequestSchema = v.union([TestRequestPayloadSchema, GliaWebhookPayloadSchema]);
+export const UnionRequestSchema = v.union([TestRequestPayloadSchema, GliaWebhookPayloadSchema, GliaUtterancePayloadSchema]);

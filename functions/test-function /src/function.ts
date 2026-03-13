@@ -28,5 +28,9 @@ export async function onInvoke(request: Request, environment: Record<string, unk
   const result = await requestHandler.handleRequest(validatedPayload.output);
   await logger.info('--------Request processed---------');
 
+  if ('utterance' in validatedPayload.output) {
+    return Response.json(result.status ? result.payload : { confidence_level: 0, messages: [] });
+  }
+
   return Response.json(result);
 }

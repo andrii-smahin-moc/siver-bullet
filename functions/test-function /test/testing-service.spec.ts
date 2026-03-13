@@ -13,7 +13,16 @@ vi.mock('ai', () => ({
 }));
 
 import { TestingService } from '../src/services/testing-service';
-import { FunctionConfig, GliaChatMessagePayload, GliaEngagementStartPayload, KvStoreFactory, LoggerInterface } from '../src/types';
+import { RequestHandler } from '../src/request-handler';
+import { validatePayload } from '../src/request-validator';
+import {
+  FunctionConfig,
+  GliaChatMessagePayload,
+  GliaEngagementStartPayload,
+  GliaUtterancePayload,
+  KvStoreFactory,
+  LoggerInterface,
+} from '../src/types';
 
 const createConfig = (): FunctionConfig => ({
   callRetries: 3,
@@ -87,7 +96,98 @@ describe('TestingService.handleChatMessage', () => {
       },
       status: true,
     });
-    expect(logger.info).toHaveBeenCalledWith('Ignoring chat message event targeted to operator.');
+    expect(logger.info).toHaveBeenCalledWith('Ignoring chat message event targeted to operator. engagementId=engagement-id');
+  });
+});
+
+describe('TestingService.handleUtterance', () => {
+  it('returns an AI-generated suggestion response wrapped in messages', async () => {
+    const logger = createLogger();
+    const testingService = new TestingService(createConfig(), logger, createKvStoreFactory());
+    const invokeModel = vi.fn(async () => 'mocked-ai-response');
+
+    Object.assign(testingService as object, {
+      gliaAiService: {
+        invokeModel,
+      },
+    });
+
+    const payload: GliaUtterancePayload = {
+      account_id: 'account-id',
+      engagement_id: 'engagement-id',
+      engine_settings: {},
+      message_created_at: '2026-03-13T15:24:12Z',
+      message_id: 'message-id',
+      message_metadata: {
+        speech_to_text_type: 'audio',
+      },
+      operator_id: 'operator-id',
+      site_id: 'site-id',
+      utterance: 'Yep. Wait.',
+      visitor_attributes: {},
+      visitor_id: 'visitor-id',
+    };
+
+    const response = await testingService.handleUtterance(payload);
+
+    expect(invokeModel).toHaveBeenCalledWith('You are a helpful assistant.', 'Reply to: Yep. Wait.');
+    expect(response).toEqual({
+      payload: {
+        confidence_level: 1,
+        messages: [
+          {
+            attachment: {
+              content: '<speak><p>mocked-ai-response</p></speak>',
+              type: 'ssml',
+            },
+            content: 'mocked-ai-response',
+            type: 'suggestion',
+          },
+        ],
+      },
+      status: true,
+    });
+  });
+
+  it('returns an empty wrapped response when AI generation fails', async () => {
+    const logger = createLogger();
+    const testingService = new TestingService(createConfig(), logger, createKvStoreFactory());
+    const invokeModel = vi.fn(async () => {
+      throw new Error('model failed');
+    });
+
+    Object.assign(testingService as object, {
+      gliaAiService: {
+        invokeModel,
+      },
+    });
+
+    const payload: GliaUtterancePayload = {
+      account_id: 'account-id',
+      engagement_id: 'engagement-id',
+      engine_settings: {},
+      message_created_at: '2026-03-13T15:24:12Z',
+      message_id: 'message-id',
+      message_metadata: {
+        speech_to_text_type: 'audio',
+      },
+      operator_id: 'operator-id',
+      site_id: 'site-id',
+      utterance: 'Yep. Wait.',
+      visitor_attributes: {},
+      visitor_id: 'visitor-id',
+    };
+
+    const response = await testingService.handleUtterance(payload);
+
+    expect(response).toEqual({
+      payload: {
+        confidence_level: 1,
+        messages: [],
+      },
+      status: true,
+    });
+    expect(logger.error).toHaveBeenCalledWith('[handleUtterance] Failed to build utterance response. error=model failed');
   });
 });
 
@@ -141,6 +241,88 @@ describe('TestingService.handleEngagementStart', () => {
     expect(response).toEqual({
       payload: {
         didSendMessage: true,
+      },
+      status: true,
+    });
+  });
+});
+
+describe('validatePayload', () => {
+  it('accepts the flat utterance request payload', async () => {
+    const request = new Request('https://example.com', {
+      body: JSON.stringify({
+        account_id: 'account-id',
+        engagement_id: 'engagement-id',
+        engine_settings: {},
+        message_created_at: '2026-03-13T15:24:12Z',
+        message_id: 'message-id',
+        message_metadata: {
+          speech_to_text_type: 'audio',
+        },
+        operator_id: 'operator-id',
+        site_id: 'site-id',
+        utterance: 'Yep. Wait.',
+        visitor_attributes: {},
+        visitor_id: 'visitor-id',
+      }),
+      method: 'POST',
+    });
+
+    const result = await validatePayload(request);
+
+    expect(result.status).toBe(true);
+    if (!result.status) {
+      throw new Error(result.message);
+    }
+
+    expect(result.output).toMatchObject({
+      engagement_id: 'engagement-id',
+      utterance: 'Yep. Wait.',
+    });
+  });
+});
+
+describe('RequestHandler.handleRequest', () => {
+  it('routes flat utterance payloads to the utterance handler', async () => {
+    const logger = createLogger();
+    const requestHandler = new RequestHandler(createConfig(), logger, createKvStoreFactory());
+    const handleUtterance = vi.fn(async () => ({
+      payload: {
+        confidence_level: 1,
+        messages: [],
+      },
+      status: true,
+    }));
+
+    Object.assign(requestHandler as object, {
+      testingService: {
+        handleUtterance,
+      },
+    });
+
+    const payload: GliaUtterancePayload = {
+      account_id: 'account-id',
+      engagement_id: 'engagement-id',
+      engine_settings: {},
+      message_created_at: '2026-03-13T15:24:12Z',
+      message_id: 'message-id',
+      message_metadata: {
+        speech_to_text_type: 'audio',
+      },
+      operator_id: 'operator-id',
+      site_id: 'site-id',
+      utterance: 'Yep. Wait.',
+      visitor_attributes: {},
+      visitor_id: 'visitor-id',
+    };
+
+    const response = await requestHandler.handleRequest(payload);
+
+    expect(handleUtterance).toHaveBeenCalledWith(payload);
+    expect(response).toEqual({
+      payload: {
+        confidence_level: 1,
+        messages: [],
       },
       status: true,
     });

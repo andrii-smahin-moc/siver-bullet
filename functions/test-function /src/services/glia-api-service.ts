@@ -75,9 +75,9 @@ export class GliaAPIService {
     }
   }
 
-  async createQueueTicket(visitorToken: string, siteToken: string, destinationQueueId: string): Promise<boolean> {
+  async createQueueTicket(visitorToken: string, siteToken: string): Promise<boolean> {
     try {
-      const response = await this.gliaQueueApi.createQueueTicket(visitorToken, siteToken, destinationQueueId);
+      const response = await this.gliaQueueApi.createQueueTicket(visitorToken, siteToken);
       return response.ok;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error in createQueueTicket';
