@@ -12,7 +12,7 @@ export class GliaQueueApi {
     this.httpRequest = new HttpRequest(config, logger);
   }
 
-  async createQueueTicket(visitorToken: string, siteToken: string): Promise<HttpResponse<UnknownResponse>> {
+  async createQueueTicket(visitorToken: string, siteToken: string, testingPhoneNumber: string): Promise<HttpResponse<UnknownResponse>> {
     const headers = new Headers();
     headers.append('Authorization', `Bearer ${visitorToken}`);
     headers.append('Content-Type', 'application/json');
@@ -21,14 +21,14 @@ export class GliaQueueApi {
       media: 'phone',
       media_options: {
         one_way: true,
-        phone_number: '+14242772597',
+        phone_number: testingPhoneNumber,
       },
       queue_ids: ['253478f1-62e4-47a4-988f-fe4e7f97bff3'],
       site_id: this.gliaConfig.siteId,
       source: 'visitor_integrator',
       webhooks: [
         {
-          events: ['engagement.start', 'engagement.end', 'engagement.request.failure', 'engagement.media_upgrade_request'],
+          events: ['engagement.start', 'engagement.end', 'engagement.request.failure'],
           headers: {
             Authorization: `Bearer ${siteToken}`,
           },

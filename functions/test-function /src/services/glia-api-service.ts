@@ -1,5 +1,6 @@
 import { GliaAuthApi, GliaEngagementApi, GliaQueueApi, GliaVisitorApi } from '../apis';
 import {
+  GliaCortexResponseSchema,
   GliaEngagementRequestSchema,
   GliaNewVisitorResponseSchema,
   GliaOperatorTokenResponseSchema,
@@ -75,9 +76,9 @@ export class GliaAPIService {
     }
   }
 
-  async createQueueTicket(visitorToken: string, siteToken: string): Promise<boolean> {
+  async createQueueTicket(visitorToken: string, siteToken: string, phoneNumber: string): Promise<boolean> {
     try {
-      const response = await this.gliaQueueApi.createQueueTicket(visitorToken, siteToken);
+      const response = await this.gliaQueueApi.createQueueTicket(visitorToken, siteToken, phoneNumber);
       return response.ok;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error in createQueueTicket';
@@ -94,6 +95,29 @@ export class GliaAPIService {
       const message = error instanceof Error ? error.message : 'Unknown error in sendMessage';
       await this.logger.error(`Error sending message: ${message}`);
       return false;
+    }
+  }
+
+  async askCortex(engagementId: string, question: string): Promise<string | null> {
+    try {
+      const operatorToken = await this.fetchOperatorToken();
+      if (!operatorToken) {
+        await this.logger.error('askCortex: Failed to fetch operator token');
+        return null;
+      }
+
+      const response = await this.gliaEngagementApi.askCortex(operatorToken, engagementId, question);
+      if (response.ok) {
+        const validated = validateSchema(GliaCortexResponseSchema, response.payload, 'GliaCortexResponseSchema');
+        if (validated.status) {
+          return validated.output.answer;
+        }
+      }
+      return null;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error in askCortex';
+      await this.logger.error(`Error in askCortex: ${message}`);
+      return null;
     }
   }
 

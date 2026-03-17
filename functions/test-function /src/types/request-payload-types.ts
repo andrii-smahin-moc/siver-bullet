@@ -1,7 +1,6 @@
 import { InferOutput } from 'valibot';
 
 import {
-  GetResultsRequestSchema,
   GliaChatMessagePayloadSchema,
   GliaEngagementStartPayloadSchema,
   GliaWebhookPayloadSchema,
@@ -10,7 +9,6 @@ import {
 } from '../schemas';
 
 export type InitializeRequestPayload = InferOutput<typeof InitializeRequestSchema>;
-export type GetResultRequestPayload = InferOutput<typeof GetResultsRequestSchema>;
 
 export type GliaEngagementStartPayload = InferOutput<typeof GliaEngagementStartPayloadSchema>;
 export type GliaChatMessagePayload = InferOutput<typeof GliaChatMessagePayloadSchema>;
@@ -31,4 +29,4 @@ export interface GliaUtterancePayload {
   visitor_id: string;
 }
 
-export type RequestPayload = TestRequestPayload | GliaWebhookPayload | GliaUtterancePayload;
+export type RequestPayload = GliaUtterancePayload | GliaWebhookPayload | TestRequestPayload;

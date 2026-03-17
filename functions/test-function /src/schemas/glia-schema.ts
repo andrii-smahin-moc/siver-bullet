@@ -16,3 +16,7 @@ export const GliaNewVisitorResponseSchema = vi.object({
 export const GliaEngagementRequestSchema = vi.object({
   id: vi.string(),
 });
+
+export const GliaCortexResponseSchema = vi.object({
+  answer: vi.string(),
+});

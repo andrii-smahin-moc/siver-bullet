@@ -1,15 +1,9 @@
 import type { FunctionConfig } from '../types/config-types';
 import type { KvStoreFactory } from '../types/kv-storage-types';
 import type { LoggerInterface } from '../types/logger-types';
-import type {
-  GetResultRequestPayload,
-  GliaChatMessagePayload,
-  GliaEngagementStartPayload,
-  InitializeRequestPayload,
-} from '../types/request-payload-types';
+import type { GliaChatMessagePayload, GliaEngagementStartPayload, InitializeRequestPayload } from '../types/request-payload-types';
 import type { ServiceResponse } from '../types/response-payload-types';
 
-import { GliaAIService } from './glia-ai-service';
 import { GliaAPIService } from './glia-api-service';
 import { GliaKVService } from './glia-kv-service';
 
@@ -58,7 +52,6 @@ type UtteranceResponse = {
 export class TestingService {
   private gliaApiService: GliaAPIService;
   private gliaKVService: GliaKVService;
-  private gliaAiService: GliaAIService;
 
   constructor(
     private config: FunctionConfig,
@@ -67,12 +60,9 @@ export class TestingService {
   ) {
     this.gliaApiService = new GliaAPIService(config, logger);
     this.gliaKVService = new GliaKVService(config, logger, kvStoreFactory);
-    this.gliaAiService = new GliaAIService(config);
   }
 
-  async initializeTest(_payload: InitializeRequestPayload): Promise<ServiceResponse<unknown>> {
-    void _payload;
-
+  async initializeTest(payload: InitializeRequestPayload): Promise<ServiceResponse<unknown>> {
     await this.logger.info('Initializing test...');
 
     const siteToken = await this.gliaApiService.fetchSiteToken();
@@ -95,7 +85,7 @@ export class TestingService {
 
     await this.gliaKVService.setValue(testVisitor.id, testVisitor.access_token);
 
-    const isTicketCreated = await this.gliaApiService.createQueueTicket(testVisitor.access_token, siteToken);
+    const isTicketCreated = await this.gliaApiService.createQueueTicket(testVisitor.access_token, siteToken, payload.testingPhoneNumber);
     if (!isTicketCreated) {
       await this.logger.error('Failed to create queue ticket during test initialization.');
       return {
@@ -110,15 +100,6 @@ export class TestingService {
         testVisitorId: testVisitor.id,
         visitorToken: testVisitor.access_token,
       },
-      status: true,
-    };
-  }
-
-  async getResults(payload: GetResultRequestPayload): Promise<ServiceResponse<unknown>> {
-    await this.logger.info(`[getResults] Fetching results. isActive=${String(payload.isActive)}`);
-
-    return {
-      payload: {},
       status: true,
     };
   }
@@ -138,11 +119,10 @@ export class TestingService {
     try {
       await this.logger.info(`[handleUtterance] Generating AI response. engagementId=${payload.engagement_id}`);
 
-      const prompt = this.config.gliaAI.prompt.replace('{sutMessage}', payload.utterance);
-      const generatedResponse = await this.gliaAiService.invokeModel(this.config.gliaAI.systemMessage, prompt);
+      const generatedResponse = await this.gliaApiService.askCortex(payload.engagement_id, this.config.gliaAI.prompt);
 
       return {
-        payload: this.buildResponse([this.createSuggestionMessage(generatedResponse)]),
+        payload: this.buildResponse(generatedResponse ? [this.createSuggestionMessage(generatedResponse)] : []),
         status: true,
       };
     } catch (error) {
@@ -175,7 +155,7 @@ export class TestingService {
         `[handleEngagementStart] Stored engagement state. engagementId=${payload.engagement.id} visitorId=${payload.engagement.visitor_id}`,
       );
 
-      const message = await this.generateInitialMessage(payload.engagement.id);
+      const message = this.generateInitialMessage(payload.engagement.id);
 
       const didSendMessage = await this.gliaApiService.sendMessage(visitorToken.value, payload.engagement.id, message);
       await this.logger.info(
@@ -258,9 +238,10 @@ export class TestingService {
     await this.logger.info(
       `[${parameters.source}] Generating AI reply. engagementId=${parameters.engagementId} visitorId=${engagementData.visitorId}`,
     );
-    const prompt = this.config.gliaAI.prompt.replace('{sutMessage}', parameters.content);
-    const generatedResponse = await this.gliaAiService.invokeModel(this.config.gliaAI.systemMessage, prompt);
-    const didSendMessage = await this.gliaApiService.sendMessage(engagementData.visitorToken, parameters.engagementId, generatedResponse);
+    const generatedResponse = await this.gliaApiService.askCortex(parameters.engagementId, this.config.gliaAI.prompt);
+    const didSendMessage = generatedResponse
+      ? await this.gliaApiService.sendMessage(engagementData.visitorToken, parameters.engagementId, generatedResponse)
+      : false;
 
     await this.logger.info(
       `[${parameters.source}] Reply processed. engagementId=${parameters.engagementId} didSendMessage=${String(didSendMessage)}`,
@@ -296,25 +277,7 @@ export class TestingService {
     return `<speak>${content}</speak>`;
   }
 
-  private async generateInitialMessage(engagementId: string): Promise<string> {
-    const prompt = [
-      'Generate the first chat message for a newly started customer engagement.',
-      'Keep it short, natural, and helpful.',
-      'Do not mention that the message was AI-generated.',
-      `Engagement ID: ${engagementId}`,
-    ].join(' ');
-
-    try {
-      await this.logger.info(`[generateInitialMessage] Generating AI opening message. engagementId=${engagementId}`);
-
-      return await this.gliaAiService.invokeModel(this.config.gliaAI.systemMessage, prompt);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error generating initial message';
-      await this.logger.error(
-        `[generateInitialMessage] Failed to generate AI opening message. engagementId=${engagementId} error=${errorMessage}`,
-      );
-
-      return `Hello! This is an automated message sent at the start of the engagement with ID: ${engagementId}`;
-    }
+  private generateInitialMessage(engagementId: string): string {
+    return `Hello! This is an automated message sent at the start of the engagement with ID: ${engagementId}`;
   }
 }

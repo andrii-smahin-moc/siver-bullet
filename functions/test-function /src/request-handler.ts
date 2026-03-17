@@ -21,10 +21,6 @@ export class RequestHandler {
 
     if ('requestType' in requestPayload) {
       switch (requestPayload.requestType) {
-        case 'getResults': {
-          return this.testingService.getResults(requestPayload.payload);
-        }
-
         case 'initTest': {
           return this.testingService.initializeTest(requestPayload.payload);
         }

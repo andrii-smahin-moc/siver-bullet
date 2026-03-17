@@ -80,6 +80,24 @@ export class GliaEngagementApi {
     return this.httpRequest.fetchWithRetry<UnknownResponse>(url, requestOptions, 'createEngagementRequest');
   }
 
+  async askCortex(token: string, engagementId: string, question: string): Promise<HttpResponse<UnknownResponse>> {
+    const headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+    headers.append('Authorization', `Bearer ${token}`);
+
+    const requestOptions = {
+      body: JSON.stringify({ question }),
+      headers,
+      method: 'POST',
+    };
+
+    return this.httpRequest.fetchWithRetry<UnknownResponse>(
+      `${this.config.glia.apiDomain}/engagements/${engagementId}/ask`,
+      requestOptions,
+      'askCortex',
+    );
+  }
+
   private generateUuid() {
     return crypto.randomUUID();
   }

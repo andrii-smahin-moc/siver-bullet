@@ -1,18 +1,10 @@
 import * as v from 'valibot';
 
 export const InitializeRequestSchema = v.object({
-  testingQueueId: v.string(),
-});
-
-export const GetResultsRequestSchema = v.object({
-  isActive: v.boolean(),
+  testingPhoneNumber: v.string(),
 });
 
 export const TestRequestPayloadSchema = v.variant('requestType', [
-  v.object({
-    payload: GetResultsRequestSchema,
-    requestType: v.literal('getResults'),
-  }),
   v.object({
     payload: InitializeRequestSchema,
     requestType: v.literal('initTest'),
