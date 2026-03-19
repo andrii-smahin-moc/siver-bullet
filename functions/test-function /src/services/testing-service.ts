@@ -1,9 +1,11 @@
 import type { FunctionConfig } from '../types/config-types';
+import type { GliaTranscriptMessage } from '../types/glia-types';
 import type { KvStoreFactory } from '../types/kv-storage-types';
 import type { LoggerInterface } from '../types/logger-types';
 import type { GliaChatMessagePayload, GliaEngagementStartPayload, InitializeRequestPayload } from '../types/request-payload-types';
 import type { ServiceResponse } from '../types/response-payload-types';
 
+import { GliaAIService } from './glia-ai-service';
 import { GliaAPIService } from './glia-api-service';
 import { GliaKVService } from './glia-kv-service';
 
@@ -51,6 +53,7 @@ type UtteranceResponse = {
 
 export class TestingService {
   private gliaApiService: GliaAPIService;
+  private gliaAiService: GliaAIService;
   private gliaKVService: GliaKVService;
 
   constructor(
@@ -59,6 +62,7 @@ export class TestingService {
     kvStoreFactory: KvStoreFactory,
   ) {
     this.gliaApiService = new GliaAPIService(config, logger);
+    this.gliaAiService = new GliaAIService(config);
     this.gliaKVService = new GliaKVService(config, logger, kvStoreFactory);
   }
 
@@ -119,7 +123,15 @@ export class TestingService {
     try {
       await this.logger.info(`[handleUtterance] Generating AI response. engagementId=${payload.engagement_id}`);
 
-      const generatedResponse = await this.gliaApiService.askCortex(payload.engagement_id, this.config.gliaAI.prompt);
+      let transcript = '';
+      const operatorToken = await this.gliaApiService.fetchOperatorToken();
+      if (operatorToken) {
+        const messages = await this.gliaApiService.fetchTranscript(operatorToken, payload.engagement_id);
+        transcript = this.formatTranscript(messages);
+      }
+
+      const prompt = this.buildPrompt(transcript);
+      const generatedResponse = await this.gliaAiService.invokeModel(this.config.gliaAI.systemMessage, prompt);
 
       return {
         payload: this.buildResponse(generatedResponse ? [this.createSuggestionMessage(generatedResponse)] : []),
@@ -155,7 +167,9 @@ export class TestingService {
         `[handleEngagementStart] Stored engagement state. engagementId=${payload.engagement.id} visitorId=${payload.engagement.visitor_id}`,
       );
 
-      const message = this.generateInitialMessage(payload.engagement.id);
+      const initialPrompt =
+        `Generate the first chat message for a newly started customer engagement.` + ` Engagement ID: ${payload.engagement.id}`;
+      const message = await this.gliaAiService.invokeModel(this.config.gliaAI.systemMessage, initialPrompt);
 
       const didSendMessage = await this.gliaApiService.sendMessage(visitorToken.value, payload.engagement.id, message);
       await this.logger.info(
@@ -238,7 +252,20 @@ export class TestingService {
     await this.logger.info(
       `[${parameters.source}] Generating AI reply. engagementId=${parameters.engagementId} visitorId=${engagementData.visitorId}`,
     );
-    const generatedResponse = await this.gliaApiService.askCortex(parameters.engagementId, this.config.gliaAI.prompt);
+
+    const operatorToken = await this.gliaApiService.fetchOperatorToken();
+    const messages = operatorToken ? await this.gliaApiService.fetchTranscript(operatorToken, parameters.engagementId) : [];
+    const transcript = this.formatTranscript(messages);
+    const prompt = this.buildPrompt(transcript);
+
+    let generatedResponse: string | null = null;
+    try {
+      generatedResponse = await this.gliaAiService.invokeModel(this.config.gliaAI.systemMessage, prompt);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      await this.logger.error(`[${parameters.source}] AI generation failed. error=${errorMessage}`);
+    }
+
     const didSendMessage = generatedResponse
       ? await this.gliaApiService.sendMessage(engagementData.visitorToken, parameters.engagementId, generatedResponse)
       : false;
@@ -258,7 +285,7 @@ export class TestingService {
   private createSuggestionMessage(content: string): SuggestionMessage {
     return {
       attachment: {
-        content: this.toSsml(content),
+        content: `<speak><p>${content}</p></speak>`,
         type: 'ssml',
       },
       content: '',
@@ -268,16 +295,17 @@ export class TestingService {
 
   private buildResponse(messages: Array<SuggestionMessage | TransferMessage>): UtteranceResponse {
     return {
-      confidence_level: 0.99,
+      confidence_level: this.config.gliaAI.confidence,
       messages,
     };
   }
 
-  private toSsml(content: string): string {
-    return `<speak>${content}</speak>`;
+  private formatTranscript(messages: GliaTranscriptMessage[]): string {
+    return messages.map((m) => `${m.sender.name || m.sender.type}: ${m.message || ''}`).join('\n');
   }
 
-  private generateInitialMessage(engagementId: string): string {
-    return `Hello! This is an automated message sent at the start of the engagement with ID: ${engagementId}`;
+  private buildPrompt(transcript: string): string {
+    const prompt = this.config.gliaAI.prompt.replace('{conversation_history}', transcript || '');
+    return prompt;
   }
 }

@@ -106,9 +106,18 @@ describe('TestingService.handleUtterance', () => {
     const testingService = new TestingService(createConfig(), logger, createKvStoreFactory());
     const invokeModel = vi.fn(async () => 'mocked-ai-response');
 
+    const fetchOperatorToken = vi.fn(async () => 'operator-token');
+    const fetchTranscript = vi.fn(async () => [
+      { message: 'Hello', sender: { name: 'Visitor', type: 'visitor' }, type: 'user' },
+    ]);
+
     Object.assign(testingService as object, {
       gliaAiService: {
         invokeModel,
+      },
+      gliaApiService: {
+        fetchOperatorToken,
+        fetchTranscript,
       },
     });
 
@@ -130,17 +139,22 @@ describe('TestingService.handleUtterance', () => {
 
     const response = await testingService.handleUtterance(payload);
 
-    expect(invokeModel).toHaveBeenCalledWith('You are a helpful assistant.', 'Reply to: Yep. Wait.');
+    expect(fetchOperatorToken).toHaveBeenCalled();
+    expect(fetchTranscript).toHaveBeenCalledWith('operator-token', 'engagement-id');
+    expect(invokeModel).toHaveBeenCalledWith(
+      'You are a helpful assistant.',
+      'Reply to: Yep. Wait.\n\nChat transcript:\nVisitor: Hello',
+    );
     expect(response).toEqual({
       payload: {
-        confidence_level: 1,
+        confidence_level: 0.9,
         messages: [
           {
             attachment: {
               content: '<speak><p>mocked-ai-response</p></speak>',
               type: 'ssml',
             },
-            content: 'mocked-ai-response',
+            content: '',
             type: 'suggestion',
           },
         ],
@@ -160,6 +174,10 @@ describe('TestingService.handleUtterance', () => {
       gliaAiService: {
         invokeModel,
       },
+      gliaApiService: {
+        fetchOperatorToken: vi.fn(async () => 'operator-token'),
+        fetchTranscript: vi.fn(async () => []),
+      },
     });
 
     const payload: GliaUtterancePayload = {
@@ -182,7 +200,7 @@ describe('TestingService.handleUtterance', () => {
 
     expect(response).toEqual({
       payload: {
-        confidence_level: 1,
+        confidence_level: 0.9,
         messages: [],
       },
       status: true,
@@ -288,7 +306,7 @@ describe('RequestHandler.handleRequest', () => {
     const requestHandler = new RequestHandler(createConfig(), logger, createKvStoreFactory());
     const handleUtterance = vi.fn(async () => ({
       payload: {
-        confidence_level: 1,
+        confidence_level: 0.9,
         messages: [],
       },
       status: true,
@@ -321,7 +339,7 @@ describe('RequestHandler.handleRequest', () => {
     expect(handleUtterance).toHaveBeenCalledWith(payload);
     expect(response).toEqual({
       payload: {
-        confidence_level: 1,
+        confidence_level: 0.9,
         messages: [],
       },
       status: true,

@@ -1,12 +1,12 @@
 import { GliaAuthApi, GliaEngagementApi, GliaQueueApi, GliaVisitorApi } from '../apis';
 import {
-  GliaCortexResponseSchema,
   GliaEngagementRequestSchema,
   GliaNewVisitorResponseSchema,
   GliaOperatorTokenResponseSchema,
   GliaSiteTokenResponseSchema,
+  GliaTranscriptResponseSchema,
 } from '../schemas';
-import type { FunctionConfig, GliaEngagementRequestResult, GliaNewVisitorResponse, LoggerInterface } from '../types';
+import type { FunctionConfig, GliaEngagementRequestResult, GliaNewVisitorResponse, GliaTranscriptMessage, LoggerInterface } from '../types';
 import { validateSchema } from '../validator';
 
 export class GliaAPIService {
@@ -98,26 +98,20 @@ export class GliaAPIService {
     }
   }
 
-  async askCortex(engagementId: string, question: string): Promise<string | null> {
+  async fetchTranscript(token: string, engagementId: string): Promise<GliaTranscriptMessage[]> {
     try {
-      const operatorToken = await this.fetchOperatorToken();
-      if (!operatorToken) {
-        await this.logger.error('askCortex: Failed to fetch operator token');
-        return null;
-      }
-
-      const response = await this.gliaEngagementApi.askCortex(operatorToken, engagementId, question);
+      const response = await this.gliaEngagementApi.fetchTranscript(token, engagementId);
       if (response.ok) {
-        const validated = validateSchema(GliaCortexResponseSchema, response.payload, 'GliaCortexResponseSchema');
+        const validated = validateSchema(GliaTranscriptResponseSchema, response.payload, 'GliaTranscriptResponseSchema');
         if (validated.status) {
-          return validated.output.answer;
+          return validated.output;
         }
       }
-      return null;
+      return [];
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error in askCortex';
-      await this.logger.error(`Error in askCortex: ${message}`);
-      return null;
+      const message = error instanceof Error ? error.message : 'Unknown error in fetchTranscript';
+      await this.logger.error(`Error in fetchTranscript: ${message}`);
+      return [];
     }
   }
 

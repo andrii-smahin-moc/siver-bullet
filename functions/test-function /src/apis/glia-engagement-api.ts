@@ -80,21 +80,20 @@ export class GliaEngagementApi {
     return this.httpRequest.fetchWithRetry<UnknownResponse>(url, requestOptions, 'createEngagementRequest');
   }
 
-  async askCortex(token: string, engagementId: string, question: string): Promise<HttpResponse<UnknownResponse>> {
+  async fetchTranscript(token: string, engagementId: string): Promise<HttpResponse<UnknownResponse>> {
     const headers = new Headers();
-    headers.append('Content-Type', 'application/json');
+    headers.append('Accept', 'application/vnd.salemove.v1+json');
     headers.append('Authorization', `Bearer ${token}`);
 
     const requestOptions = {
-      body: JSON.stringify({ question }),
       headers,
-      method: 'POST',
+      method: 'GET',
     };
 
     return this.httpRequest.fetchWithRetry<UnknownResponse>(
-      `${this.config.glia.apiDomain}/engagements/${engagementId}/ask`,
+      `${this.config.glia.apiDomain}/engagements/${engagementId}/chat_transcript`,
       requestOptions,
-      'askCortex',
+      'fetchTranscript',
     );
   }
 

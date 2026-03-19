@@ -31,17 +31,17 @@ export class RequestHandler {
       return this.testingService.handleUtterance(requestPayload);
     }
 
-    if ('event_type' in requestPayload) {
-      switch (requestPayload.event_type) {
-        case 'engagement.chat.message': {
-          return this.testingService.handleChatMessage(requestPayload);
-        }
+    // if ('event_type' in requestPayload) {
+    //   switch (requestPayload.event_type) {
+    //     case 'engagement.chat.message': {
+    //       return this.testingService.handleChatMessage(requestPayload);
+    //     }
 
-        case 'engagement.start': {
-          return this.testingService.handleEngagementStart(requestPayload);
-        }
-      }
-    }
+    //     case 'engagement.start': {
+    //       return this.testingService.handleEngagementStart(requestPayload);
+    //     }
+    //   }
+    // }
 
     return {
       error: 'Unsupported request type',

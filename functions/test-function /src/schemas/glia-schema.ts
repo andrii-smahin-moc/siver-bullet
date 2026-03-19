@@ -17,6 +17,13 @@ export const GliaEngagementRequestSchema = vi.object({
   id: vi.string(),
 });
 
-export const GliaCortexResponseSchema = vi.object({
-  answer: vi.string(),
+export const GliaTranscriptMessageSchema = vi.object({
+  message: vi.nullable(vi.string()),
+  sender: vi.object({
+    name: vi.optional(vi.nullable(vi.string())),
+    type: vi.string(),
+  }),
+  type: vi.string(),
 });
+
+export const GliaTranscriptResponseSchema = vi.array(GliaTranscriptMessageSchema);
